@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Nov 14 16:43:23 2019
+
+@author: seungmin
+"""
+### Updated SORT
+
 """
     SORT: A Simple, Online and Realtime Tracker
     Copyright (C) 2016 Alex Bewley alex@dynamicdetection.com
@@ -15,28 +24,29 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-from __future__ import print_function
 
-from numba import jit, njit
+from numba import jit
 import os.path
 import numpy as np
 from skimage import io
-from sklearn.utils.linear_assignment_ import linear_assignment
-import glob
+
+from scipy.optimize import linear_sum_assignment
 import time
 import argparse
 from filterpy.kalman import KalmanFilter
 
+import warnings
+warnings.filterwarnings('ignore')
 
 @jit
 def iou(bb_test,bb_gt):
   """
   Computes IUO between two bboxes in the form [x1,y1,x2,y2]
   """
-  xx1 = np.maximum(bb_test[0], bb_gt[0])
-  yy1 = np.maximum(bb_test[1], bb_gt[1])
-  xx2 = np.minimum(bb_test[2], bb_gt[2])
-  yy2 = np.minimum(bb_test[3], bb_gt[3])
+  xx1 = np.maximum(bb_test[0], bb_gt[0], dtype=np.float64)
+  yy1 = np.maximum(bb_test[1], bb_gt[1], dtype=np.float64)
+  xx2 = np.minimum(bb_test[2], bb_gt[2], dtype=np.float64)
+  yy2 = np.minimum(bb_test[3], bb_gt[3], dtype=np.float64)
   w = np.maximum(0., xx2 - xx1)
   h = np.maximum(0., yy2 - yy1)
   wh = w * h
@@ -144,7 +154,9 @@ def associate_detections_to_trackers(detections,trackers,iou_threshold = 0.3):
   for d,det in enumerate(detections):
     for t,trk in enumerate(trackers):
       iou_matrix[d,t] = iou(det,trk)
-  matched_indices = linear_assignment(-iou_matrix)
+  matched_indices = linear_sum_assignment(-iou_matrix)
+  matched_indices = np.asarray(matched_indices)
+  matched_indices = np.transpose(matched_indices)
 
   unmatched_detections = []
   for d,det in enumerate(detections):
