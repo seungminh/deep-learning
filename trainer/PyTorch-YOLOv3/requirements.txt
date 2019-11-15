@@ -8,6 +8,7 @@ terminaltables
 pillow
 tqdm
 scikit-image
+scipy
 numba
 sklearn
 filterpy
