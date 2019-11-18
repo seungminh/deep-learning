@@ -35,10 +35,6 @@ if __name__ == "__main__":
     opt = parser.parse_args()
     print(opt)
 
-
-counter = 0
-memory = {}
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load model and weights
@@ -72,10 +68,19 @@ def detect_image(img):
 #videopath = 'http://192.168.40.187:8080/video'
 videopath = opt.input_video
 
+
 import cv2
 from sort import *
-colors=[(255,0,0),(0,255,0),(0,0,255),(255,0,255),(128,0,0),(0,128,0),(0,0,128),(128,0,128),(128,128,0),(0,128,128)]
+
+line_01 = [(265,330), (280,450)]
+line_02 = [(435,310), (500,420)]
+
+counter = 0
+memory = {}
+
+#np.random.seed(42)
 #colors = np.random.randint(0, 255, size=(200, 3), dtype="uint8")
+colors=[(255,0,0),(0,255,0),(0,0,255),(255,0,255),(128,0,0),(0,128,0),(0,0,128),(128,0,128),(128,128,0),(0,128,128)]
 
 vid = cv2.VideoCapture(videopath)
 mot_tracker = Sort()
@@ -114,8 +119,6 @@ while(True):
     
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
     
-    #cv2.line(frame, line_start, line_end, (0, 0xFF, 0), 5)
-    
     img = np.array(pilimg)
     pad_x = max(img.shape[0] - img.shape[1], 0) * (opt.img_size / max(img.shape))
     pad_y = max(img.shape[1] - img.shape[0], 0) * (opt.img_size / max(img.shape))
@@ -125,6 +128,14 @@ while(True):
     boxes = []
     confidences = []
     classIDs = []
+    
+    # draw semi transparent polygon
+    overlay = frame.copy()
+    pts = np.array([[265,330],[280,450],[500,420],[435,310]], np.int32)
+    pts = pts.reshape((-1,1,2))
+    cv2.fillPoly(frame, [pts], (0,255,0))
+    opacity = 0.7
+    cv2.addWeighted(overlay, opacity, frame, 1 - opacity, 0, frame)
     
     if detections is not None:
         tracked_objects = mot_tracker.update(detections.cpu())
@@ -136,9 +147,8 @@ while(True):
         indexIDs = []
         previous = memory.copy()
         memory = {}
+        
         for x1, y1, x2, y2, obj_id, cls_pred in tracked_objects:
-            
-            realtime = datetime.datetime.now()
             
             box_h = int(((y2 - y1) / unpad_h) * img.shape[0])
             box_w = int(((x2 - x1) / unpad_w) * img.shape[1])
@@ -146,21 +156,21 @@ while(True):
             x1 = int(((x1 - pad_x // 2) / unpad_w) * img.shape[1])
             
             color = colors[int(obj_id) % len(colors)]
-            color = [i * 255 for i in color]
+            #color = [i * 255 for i in color]
             cls = classes[int(cls_pred)]
-            if cls == 'train':
-                pass
-            else : 
-                cv2.rectangle(frame, (x1, y1), (x1+box_w, y1+box_h), color, 4)
-                cv2.rectangle(frame, (x1, y1-35), (x1+len(cls)*19, y1), color, -1)
-                cv2.putText(frame, cls, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
             
-                print('{0} - frame No : {1} - {2}'.format(realtime, frames, cls))#, str(int(obj_id))))
+            realtime = datetime.datetime.now().strftime("%H:%M:%S")
+            
+            cv2.rectangle(frame, (x1, y1), (x1+box_w, y1+box_h), color, 2)
+            cv2.rectangle(frame, (x1, y1-25), (x1+len(cls)*12, y1), color, -1)
+            cv2.putText(frame, cls+str(int(obj_id)), (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 2)
+            
+            print('{0} - {1}'.format(realtime, (cls, int(obj_id))))#, str(int(obj_id))))
                 
             boxes.append([x1, y1, box_w, box_h])
             indexIDs.append(int(obj_id))
             memory[indexIDs[-1]] = boxes[-1]
-
+            
         if len(boxes) > 0:
             i = int(0)
             for box in boxes:
@@ -173,19 +183,25 @@ while(True):
                     (x2, y2) = (int(previous_box[0]), int(previous_box[1]))
                     (w2, h2) = (int(previous_box[2]), int(previous_box[3]))
                     
-                    p0 = (int(x + (w - x) / 2), int(y + (h - y) / 2))
-                    p1 = (int(x2 + (w2 - x2) / 2), int(y2 + (h2 - y2) / 2))
+                    p0 = (int(x + (w)/2), int(y + (h)/2))
+                    p1 = (int(x2 + (w2)/2), int(y2 + (h2)/2))
+                    cv2.line(frame, p0, p1, color, 3)
                     
-                    #if intersect(p0, p1, line_start, line_end):
-                     #   counter +=1
+                    if intersect(p0, p1, line_01[0], line_01[1]):
+                        counter -=1
+                        
+                    elif intersect(p0, p1, line_02[0], line_02[1]):
+                        counter +=1
                         
                 i +=1
-
-
-            #cv2.putText(frame, str(counter), (100,200), cv2.FONT_HERSHEY_DUPLEX, 4.0, (0, 255, 255), 10)
-            
+    
+    # draw counter
+    cv2.line(frame, line_01[0], line_01[1], (0,255,0), 4)
+    cv2.line(frame, line_02[0], line_02[1], (0,255,0), 4)
+    cv2.putText(frame, str(counter), (50,100), cv2.FONT_HERSHEY_DUPLEX, 2, (255, 255, 255), 2)
+    
     cv2.imshow('Stream', frame)
-    cv2.imwrite('output_video/frame-{}.png'.format(frames), frame)
+    #cv2.imwrite('output_video/frame-{}.png'.format(frames), frame)
     outvideo.write(frame)
     ch = 0xFF & cv2.waitKey(100)
     if ch == 27:
