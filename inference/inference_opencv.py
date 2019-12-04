@@ -8,14 +8,42 @@ Created on Fri Nov 29 10:09:16 2019
 import cv2
 import numpy as np
 
-import object_tracker as obt
+import tracker.object_tracker as obt
+import argparse
+
+if __name__ == "__main__":
+    
+    parser = argparse.ArgumentParser(description = "보행자 검지 모듈 v1.0.0")
+    
+    parser.add_argument("-cfg", "--config_path", type=str, default="../trainer/PyTorch-YOLOv3/config/yolov3.cfg",
+                        help=": 모델의 가중치 파일과 호환중인 configuration 파일의 경로를 입력하세요.")
+    
+    parser.add_argument("-w", "--weights_path", type=str, default="../trainer/PyTorch-YOLOv3/weights/yolov3.weights",
+                        help=": 학습이 끝난 가중치 파일의 경로를 입력하세요.")
+    
+    parser.add_argument("-cls", "--class_path", type=str, default="../trainer/PyTorch-YOLOv3/data/coco.names",
+                        help=": 학습된 객체명이 담긴 텍스트 파일의 경로를 입력하세요.")
+    
+    parser.add_argument("-cnf", "--conf_thres", type=float, default=0.9,
+                        help=": 1이하의 objectness 임계값을 입력하세요. 낮을수록 많은 경계박스가 출력됩니다.")
+    
+    parser.add_argument("-nms", "--nms_thres", type=float, default=0.2,
+                        help=": 1이하의 비최대치 임계값을 입력하세요.")
+    
+    parser.add_argument("-img", "--img_size", type=int, default=416,
+                        help=": 모델 학습시 사용한 이미지 리사이징 수치를 입력하세요.")
+    
+    parser.add_argument("-vid", "--input_video", type=str, default="False",
+                        help="검지 할 영상 파일의 경로를 입력하세요.")
+    opt = parser.parse_args()
+    print(opt)   
 
 # yolo path
-yolomodel = {"config_path":"../trainer/PyTorch-YOLOv3/config/yolov3.cfg",
-             "weights_path":"../trainer/PyTorch-YOLOv3/weights/yolov3.weights",
-             "class_path":"../trainer/PyTorch-YOLOv3/data/coco.names",
-             "conf_thres": 0.9,
-             "nms_thres": 0.2
+yolomodel = {"config_path":opt.config_path,
+             "weights_path":opt.weights_path,
+             "class_path":opt.class_path,
+             "conf_thres":opt.conf_thres,
+             "nms_thres":opt.nms_thres
              }
 
 # initialize network
@@ -33,7 +61,7 @@ bbox_colors = np.random.randint(0, 255, size=(len(labels), 3))
 maxLost=5
 tracker = obt.Tracker(maxLost = maxLost)
 
-video_path = "./input/pedestrian_06.mp4"
+video_path = opt.input_video
 cap = cv2.VideoCapture(video_path)
 
 # Starting object detection
@@ -50,7 +78,7 @@ while(True):
     
     if W is None or H is None: (H, W) = frame.shape[:2]
     
-    blob = cv2.dnn.blobFromImage(frame, 1/255.0, (416, 416), swapRB=True, crop=False)
+    blob = cv2.dnn.blobFromImage(frame, 1/255.0, (int(opt.img_size), int(opt.img_size)), swapRB=True, crop=False)
     net.setInput(blob)
     detections_layer = net.forward(layer_names)
     
@@ -85,7 +113,7 @@ while(True):
             cv2.putText(frame, "{}:{:.4f}".format(labels[classIDs[i]], confidences[i]),
                         (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, clr, 2)
         
-    # Update tracker
+    
     objects = tracker.update(detections_bbox)
     
     for (objectID, centroid) in objects.items():
@@ -99,19 +127,12 @@ while(True):
     ch = 0xFF & cv2.waitKey(100)
     if ch == 27:
         break
-    #if cv2.waitKey(1) & 0xFF ==ord('q'):
-    #    break
     
     if writer is None:
-        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+        fourcc = cv2.VideoWriter_fourcc(*"MP4V")
         writer = cv2.VideoWriter("output.mp4", fourcc, 30, (W, H), True)
     writer.write(frame)
     
 writer.release()
 cap.release()
 cv2.destroyWindow("image")
-
-    
-    
-        
-
