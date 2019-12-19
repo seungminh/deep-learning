@@ -21,15 +21,30 @@ if __name__ == "__main__":
     opt = parser.parse_args()
     print(opt)
 
+
 # 
-def read_folder(path, extension):
+def read_folder(path):
+    
     file_list = os.listdir(path)
-    file_list_ext = [file for file in file_list if file.endswith(extension)]
-    return sorted(file_list_ext)
+    ext_list = []
+    for file in file_list:
+        name, ext = os.path.splitext(file)
+        ext_list.append(ext)
+        
+    ext_list = list(set(list(filter(None, ext_list))))
+    
+    file_list_ext = []
+    for file in file_list:
+        for ext in ext_list:
+            if file.endswith(ext):
+                file_list_ext.append(file)
+    
+    return sorted(file_list_ext), sorted(ext_list)
 
 
-list_of_images = read_folder(opt.file_path, ".jpg")
+list_of_images = read_folder(opt.file_path)[0]
 print(list_of_images)
+
 
 with open("./"+ opt.train_valid + ".txt", 'w') as file:
     
