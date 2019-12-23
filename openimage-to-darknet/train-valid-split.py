@@ -12,9 +12,7 @@ import argparse
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
-    parser.add_argument("-p", "--file_path", type=str, help="이미지 폴더 경로")
-    
-    parser.add_argument("-c", "--custom_path", type=str, help="커스텀 데이터 폴더 경로")
+    parser.add_argument("-p", "--file_path", type=str, nargs='*', help="이미지 폴더 경로")
     
     parser.add_argument("-n", "--train_valid", type=str, help="train or valid")
     
@@ -42,15 +40,25 @@ def read_folder(path):
     return sorted(file_list_ext), sorted(ext_list)
 
 
-list_of_images = read_folder(opt.file_path)[0]
+list_of_images = []
+for one_folder in opt.file_path:
+    folder_images = read_folder(one_folder)[0]
+    list_of_images.append(folder_images)
+
 print(list_of_images)
 
 
+
+    
+
 with open("./"+ opt.train_valid + ".txt", 'w') as file:
     
-    for i, image in enumerate(list_of_images):
+    for h, one_folder in enumerate(opt.file_path):
         
-        if i == len(list_of_images)-1:
-            file.write(opt.custom_path + image)
-        else:
-            file.write(opt.custom_path + image + "\n")
+        for i, image in enumerate(list_of_images[h]):
+            
+            if h == opt.file_path[-1] and i == list_of_images[opt.file_path[-1]]:
+                file.write(os.path.abspath(opt.file_path[h]) + "/" + image)
+                
+            else:
+                file.write(os.path.abspath(opt.file_path[h]) + "/" + image + "\n")
