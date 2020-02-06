@@ -177,8 +177,8 @@ def readVid(input_vid, model, tensor, img_size, conf_thres, nms_thres, area, tra
         pad_x, pad_y, unpad_h, unpad_w, img_= unpad(pilimg,
                                                     img_size)
         
-        blending_area(frame,
-                      area.points)
+        for i in range(0, len(area)):
+            blending_area(frame, area[i])#area.points)
         
         boxes, indexIDs, previous, color, p0 = trackingBoxes(frame,
                                                          detections,
@@ -191,9 +191,11 @@ def readVid(input_vid, model, tensor, img_size, conf_thres, nms_thres, area, tra
                                                          colors,
                                                          classes)
         
-        print(p0)
-        print(pointAreaTest(area.points, p0))
+        #print(p0)
         
+        print("Congestion in the user area.{0}: {1}".format(len(area)-len(area), pointAreaTest(area[len(area)-len(area)], p0)))
+        print("Congestion in the user area.{0}: {1}".format(len(area)-len(area)+1, pointAreaTest(area[len(area)-len(area)+1], p0)))
+        print("\n")
         cv2.imshow('Stream', frame)
         outvideo.write(frame)
         ch = 0xFF & cv2.waitKey(100)

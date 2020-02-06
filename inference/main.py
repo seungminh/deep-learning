@@ -6,10 +6,9 @@ Created on Thu Nov 14 16:42:51 2019
 @author: seungmin
 """
 
-
 from area.area_designation import *
-from readNet import *
-from detectBox import *
+from ie_pytorch.readNet import *
+from ie_pytorch.detectBox import *
 from tracker.sort import *
 from utils import *
 
@@ -41,8 +40,12 @@ if __name__ == "__main__":
     
     parser.add_argument("-vid", "--input_video", type=str, help="input video path")
     
+    parser.add_argument("-mcls", "--my_class_path", type=str, help="my class name file")
+    
     parser.add_argument("-sav", "--save_path", type=str, help="save path for trajectory")
-    #parser.add_argument("--input_ip", type=str, help="input ip")
+    
+    parser.add_argument("-area", "--area_number", type=int, help="number of area")
+    
     opt = parser.parse_args()
     print(opt)
 
@@ -56,6 +59,10 @@ yolomodel = {"config_path":opt.config_path,
              "conf_thres":opt.conf_thres,
              "nms_thres":opt.nms_thres
              }
+
+my_input = {"input_video":opt.input_video,
+            "my_class_file":opt.my_class_path,
+            "area_number":opt.area_number}
 
 # 디바이스 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -91,23 +98,21 @@ CANVAS_SIZE = (vid.get(3),vid.get(4))
 FINAL_LINE_COLOR = (255, 255, 255)
 WORKING_LINE_COLOR = (127, 127, 127)
 
-my_area = PolygonDrawer("Area", frame, CANVAS_SIZE, FINAL_LINE_COLOR, WORKING_LINE_COLOR) 
-my_area.run()
+#area_number = input("your area number")
 
-# Counting objects by intersection 
-def intersect(A,B,C,D):
-	return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
+polygons = []
+for n in range(my_input["area_number"]):
+    my_area = PolygonDrawer("Area", frame, CANVAS_SIZE, FINAL_LINE_COLOR, WORKING_LINE_COLOR)
+    my_area.run()
+    polygons.append(my_area.points)
 
-def ccw(A,B,C):
-	return (C[1]-A[1]) * (B[0]-A[0]) > (B[1]-A[1]) * (C[0]-A[0])
-
-readVid(opt.input_video,
+readVid(my_input["input_video"],
         my_model,
         Tensor,
         yolomodel["img_size"],
         yolomodel["conf_thres"],
         yolomodel["nms_thres"],
-        my_area,
+        polygons,
         mot_tracker,
         colors,
         classes)
